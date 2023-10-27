@@ -1,8 +1,9 @@
 use std::env;
+use std::time::Instant;
 
 use crate::cube::{Cube, Facelet};
-use crate::moves::{CanFullMove, CanMove};
-use crate::pos_solve::optimal_solve_position;
+use crate::full_solve::optimal_solve;
+use crate::moves::{CanFullMove, nice_write};
 
 mod cube;
 mod full_solve;
@@ -95,23 +96,12 @@ fn main() -> Result<(), i32> {
 
     let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(&parsed);
 
-    let arr = cube.clone().make_pos_arr_from_dlb();
+    let start = Instant::now();
+    let solution = optimal_solve(cube);
+    let elapsed = start.elapsed();
 
-    let pos_solve = optimal_solve_position(arr);
-
-    println!(
-        "Positionally solved in {} moves:\n{:?}",
-        pos_solve.len(),
-        pos_solve
-    );
-
-    let solved_ish = cube.clone().apply_many(&pos_solve);
-
-    if solved_ish.solved() {
-        println!("The cube is solved!");
-    } else {
-        println!("The cube is positionally solved, but not orientationally solved");
-    }
+    println!("Full solution to input in {} moves:\n{}", solution.len(), nice_write(&solution));
+    println!("Search took {:?}", elapsed);
 
     Ok(())
 }

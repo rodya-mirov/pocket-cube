@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use crate::cube::{Cube, CubeletArrangement};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -18,6 +20,42 @@ pub enum Amt {
 pub struct Move {
     pub dir: Dir,
     pub amt: Amt,
+}
+
+impl Display for Move {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self.dir {
+            Dir::R => write!(f, "R")?,
+            Dir::U => write!(f, "U")?,
+            Dir::F => write!(f, "F")?,
+        }
+
+        match self.amt {
+            Amt::One => {}
+            Amt::Two => write!(f, "2")?,
+            Amt::Rev => write!(f, "'")?,
+        }
+
+        Ok(())
+    }
+}
+
+pub fn nice_write(moves: &[Move]) -> String {
+    if moves.is_empty() {
+        return String::new();
+    }
+
+    let mut running = String::new();
+
+    let mut iter = moves.iter();
+
+    running.push_str(&format!("{}", iter.next().unwrap()));
+
+    for i in iter {
+        running.push_str(&format!(" {}", i));
+    }
+
+    running
 }
 
 pub trait CanMove: Sized {
