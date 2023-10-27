@@ -1,11 +1,14 @@
-use crate::cube::{Cube, Facelet};
-use crate::setup::CanFullMove;
-use crate::solve::{optimal_solve_position, CanMove};
 use std::env;
 
+use crate::cube::{Cube, Facelet};
+use crate::moves::{CanFullMove, CanMove};
+use crate::pos_solve::optimal_solve_position;
+
 mod cube;
+mod full_solve;
+mod moves;
+mod pos_solve;
 mod setup;
-mod solve;
 
 /*
 Terminology we're going to fix:

@@ -995,8 +995,6 @@ mod invariants_tests {
 
     #[test]
     fn simple_rotations() {
-        let start = || Cube::make_solved(Facelet::Red, Facelet::Yellow);
-
         assert_ne!(
             Cube::make_solved(Facelet::Green, Facelet::White),
             Cube::make_solved(Facelet::Green, Facelet::White).left()

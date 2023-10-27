@@ -1,70 +1,5 @@
-use crate::cube::{Cube, CubeletArrangement};
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Dir {
-    R,
-    U,
-    F,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub enum Amt {
-    One,
-    Two,
-    Rev,
-}
-
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub struct Move {
-    pub dir: Dir,
-    pub amt: Amt,
-}
-
-impl CanMove for CubeletArrangement {
-    #[inline(always)]
-    fn apply(self, m: Move) -> CubeletArrangement {
-        match m.dir {
-            Dir::R => match m.amt {
-                Amt::One => self.r(),
-                Amt::Two => self.r_two(),
-                Amt::Rev => self.r_rev(),
-            },
-            Dir::U => match m.amt {
-                Amt::One => self.u(),
-                Amt::Two => self.u_two(),
-                Amt::Rev => self.u_rev(),
-            },
-            Dir::F => match m.amt {
-                Amt::One => self.f(),
-                Amt::Two => self.f_two(),
-                Amt::Rev => self.f_rev(),
-            },
-        }
-    }
-}
-
-impl CanMove for Cube {
-    #[inline(always)]
-    fn apply(self, m: Move) -> Cube {
-        match m.dir {
-            Dir::R => match m.amt {
-                Amt::One => self.right(),
-                Amt::Two => self.right_two(),
-                Amt::Rev => self.right_rev(),
-            },
-            Dir::U => match m.amt {
-                Amt::One => self.up(),
-                Amt::Two => self.up_two(),
-                Amt::Rev => self.up_rev(),
-            },
-            Dir::F => match m.amt {
-                Amt::One => self.front(),
-                Amt::Two => self.front_two(),
-                Amt::Rev => self.front_rev(),
-            },
-        }
-    }
-}
+use crate::cube::CubeletArrangement;
+use crate::moves::{Amt, CanMove, Dir, Move};
 
 /// This uses iterative-bounded DFS (i.e. the stupidest possible IDA* variant) to find an optimal
 /// solution to positionally solving a pocket cube
@@ -116,22 +51,11 @@ pub fn optimal_solve_position(arr: CubeletArrangement) -> Vec<Move> {
     unreachable!("Everything should be solvable in 11 moves, right")
 }
 
-pub trait CanMove: Sized {
-    fn apply(self, m: Move) -> Self;
-
-    fn apply_many(self, moves: &[Move]) -> Self {
-        let mut running = self;
-        for m in moves {
-            running = running.apply(*m);
-        }
-        running
-    }
-}
-
 #[cfg(test)]
 mod pos_solve_tests {
-    use super::*;
     use crate::cube::{Cube, Facelet};
+
+    use super::*;
 
     fn do_pos_solve_test(cube: Cube) -> Vec<Move> {
         let arr = cube.clone().make_pos_arr_from_dlb();
