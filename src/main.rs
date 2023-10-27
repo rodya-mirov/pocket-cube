@@ -1,4 +1,11 @@
+use crate::cube::{Cube, Facelet};
+use crate::setup::CanFullMove;
+use crate::solve::{optimal_solve_position, CanMove};
+use std::env;
+
 mod cube;
+mod setup;
+mod solve;
 
 /*
 Terminology we're going to fix:
@@ -70,11 +77,38 @@ For me, the easiest moves are R/U/F; therefore, we'll canonically fix the BLD (b
 cubie, which is equivalent to saying we want to find solutions only using R/U/F.
 
 As a nice bonus, once a particular cubie has its position and orientation fixed, everything else
-has a correct position (relative to your fixed cubie). So when we want to know if a _cubelet_ has the
-correct position or orientation, we'll do it assuming the BLD (lower-left-back) cubie is fixed.
-Then there is a canonical answer.
+has a canonical correct position and orientation (relative to your fixed cubie). So when we want
+to know if a _cubelet_ has the correct position or orientation, we'll do it assuming the BLD
+(lower-left-back) cubie is fixed. Then there is a canonical answer.
 */
 
-fn main() {
-    println!("Hello, world!");
+fn main() -> Result<(), i32> {
+    let args: Vec<String> = env::args().skip(1).collect();
+    let input_line: String = args.join(" ");
+    let parsed = setup::parse_line(&input_line).map_err(|e| {
+        println!("Could not parse token {:?}", e);
+        1
+    })?;
+
+    let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(&parsed);
+
+    let arr = cube.clone().make_pos_arr_from_dlb();
+
+    let pos_solve = optimal_solve_position(arr);
+
+    println!(
+        "Positionally solved in {} moves:\n{:?}",
+        pos_solve.len(),
+        pos_solve
+    );
+
+    let solved_ish = cube.clone().apply_many(&pos_solve);
+
+    if solved_ish.solved() {
+        println!("The cube is solved!");
+    } else {
+        println!("The cube is positionally solved, but not orientationally solved");
+    }
+
+    Ok(())
 }

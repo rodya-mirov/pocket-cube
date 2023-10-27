@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 // A list, in no particular order, of all cubies
 // Each cubie is in "order" clockwise, but without a set start cubie; that is, YBO is BOY is OYB,
 // but OBY is not equivalent and is not a cubie because that color combination does not occur on
@@ -110,6 +108,240 @@ pub struct Cube {
     b: FBFace,
 }
 
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+pub struct CubeletArrangement {
+    // basically a map from "place on the cube" to "cubelet whose desired place is ..."
+    // or; "self.ulb == URF" means "the cubelet which is at ULB needs to be at URF"
+    ulf: CubeletPos,
+    ulb: CubeletPos,
+    urf: CubeletPos,
+    urb: CubeletPos,
+    dlf: CubeletPos,
+    dlb: CubeletPos,
+    drf: CubeletPos,
+    drb: CubeletPos,
+}
+
+impl CubeletArrangement {
+    #[inline(always)]
+    fn make_solved() -> Self {
+        use CubeletPos::*;
+
+        CubeletArrangement {
+            ulf: ULF,
+            ulb: ULB,
+            urf: URF,
+            urb: URB,
+            dlf: DLF,
+            dlb: DLB,
+            drf: DRF,
+            drb: DRB,
+        }
+    }
+
+    #[inline(always)]
+    pub fn is_solved(&self) -> bool {
+        // should optimize to 8 equality checks pretty readily
+        self == &CubeletArrangement::make_solved()
+    }
+
+    // note: the position-ness is assuming we fix the DLB cubelet, which we can do, I guess
+    //       it's not really canonically defined
+    // we COULD define the d/l/b moves but it would basically be: whatever moves into the DLB
+    // position is now the root of the thing, reevaluate everything according to that; and to do
+    // that we do need to also pick an orientation of the cubelet, it's a whole thing, it's awful
+    // so instead we're just gonna not have dlb moves, at all; then everything is fine
+
+    #[inline(always)]
+    pub fn r(self) -> Self {
+        let Self {
+            ulf,
+            urf,
+            ulb,
+            urb,
+            dlf,
+            dlb,
+            drf,
+            drb,
+        } = self;
+
+        Self {
+            ulf,
+            ulb,
+            dlf,
+            dlb,
+            urf: drf,
+            urb: urf,
+            drf: drb,
+            drb: urb,
+        }
+    }
+
+    #[inline(always)]
+    pub fn r_two(self) -> Self {
+        self.r().r()
+    }
+
+    #[inline(always)]
+    pub fn r_rev(self) -> Self {
+        self.r().r().r()
+    }
+
+    #[inline(always)]
+    pub fn u(self) -> Self {
+        let Self {
+            ulf,
+            urf,
+            ulb,
+            urb,
+            dlf,
+            dlb,
+            drf,
+            drb,
+        } = self;
+
+        Self {
+            dlf,
+            drf,
+            dlb,
+            drb,
+            ulf: urf,
+            urf: urb,
+            urb: ulb,
+            ulb: ulf,
+        }
+    }
+
+    #[inline(always)]
+    pub fn u_two(self) -> Self {
+        self.u().u()
+    }
+
+    #[inline(always)]
+    pub fn u_rev(self) -> Self {
+        self.u().u().u()
+    }
+
+    #[inline(always)]
+    pub fn f(self) -> Self {
+        let Self {
+            ulf,
+            urf,
+            ulb,
+            urb,
+            dlf,
+            dlb,
+            drf,
+            drb,
+        } = self;
+
+        Self {
+            ulb,
+            urb,
+            dlb,
+            drb,
+            ulf: dlf,
+            dlf: drf,
+            drf: urf,
+            urf: ulf,
+        }
+    }
+
+    #[inline(always)]
+    pub fn f_two(self) -> Self {
+        self.f().f()
+    }
+
+    #[inline(always)]
+    pub fn f_rev(self) -> Self {
+        self.f().f().f()
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct DesiredFaces {
+    u: Facelet,
+    d: Facelet,
+    r: Facelet,
+    l: Facelet,
+    f: Facelet,
+    b: Facelet,
+}
+
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+enum CubeletPos {
+    ULF,
+    ULB,
+    URF,
+    URB,
+    DLF,
+    DLB,
+    DRF,
+    DRB,
+}
+
+impl CubeletPos {
+    fn from_pos(u: bool, r: bool, f: bool) -> CubeletPos {
+        use CubeletPos::*;
+
+        match (u, r, f) {
+            (true, true, true) => URF,
+            (true, true, false) => URB,
+            (true, false, true) => ULF,
+            (true, false, false) => ULB,
+            (false, true, true) => DRF,
+            (false, true, false) => DRB,
+            (false, false, true) => DLF,
+            (false, false, false) => DLB,
+        }
+    }
+
+    // TODO: remove this? not sure it's needed
+    #[allow(unused)]
+    fn u(&self) -> bool {
+        match self {
+            CubeletPos::ULF => true,
+            CubeletPos::ULB => true,
+            CubeletPos::URF => true,
+            CubeletPos::URB => true,
+            CubeletPos::DLF => false,
+            CubeletPos::DLB => false,
+            CubeletPos::DRF => false,
+            CubeletPos::DRB => false,
+        }
+    }
+
+    // TODO: remove this? not sure it's needed
+    #[allow(unused)]
+    fn r(&self) -> bool {
+        match self {
+            CubeletPos::ULF => false,
+            CubeletPos::ULB => false,
+            CubeletPos::URF => true,
+            CubeletPos::URB => true,
+            CubeletPos::DLF => false,
+            CubeletPos::DLB => false,
+            CubeletPos::DRF => true,
+            CubeletPos::DRB => true,
+        }
+    }
+
+    // TODO: remove this? not sure it's needed
+    #[allow(unused)]
+    fn f(&self) -> bool {
+        match self {
+            CubeletPos::ULF => true,
+            CubeletPos::ULB => false,
+            CubeletPos::URF => true,
+            CubeletPos::URB => false,
+            CubeletPos::DLF => true,
+            CubeletPos::DLB => false,
+            CubeletPos::DRF => true,
+            CubeletPos::DRB => false,
+        }
+    }
+}
+
 /// Returns the "next" color for a (corner) cubie, in clockwise order, starting from a, to b,
 /// to (the return value).
 fn next_color(a: Facelet, b: Facelet) -> Facelet {
@@ -133,6 +365,44 @@ fn next_color(a: Facelet, b: Facelet) -> Facelet {
     }
 
     unreachable!("Given the facelets {:?} and {:?} which are not equal or opposites, we should have found a third facelet, but didn't", a, b)
+}
+
+fn make_pos_from_dlb(
+    desired_faces: &DesiredFaces,
+    a: Facelet,
+    b: Facelet,
+    c: Facelet,
+) -> CubeletPos {
+    let mut u = None;
+    let mut r = None;
+    let mut f = None;
+
+    for facelet in [a, b, c] {
+        if facelet == desired_faces.u {
+            u = Some(true);
+        }
+        if facelet == desired_faces.d {
+            u = Some(false);
+        }
+        if facelet == desired_faces.r {
+            r = Some(true);
+        }
+        if facelet == desired_faces.l {
+            r = Some(false);
+        }
+        if facelet == desired_faces.f {
+            f = Some(true);
+        }
+        if facelet == desired_faces.b {
+            f = Some(false);
+        }
+    }
+
+    CubeletPos::from_pos(
+        u.expect("Should find a u or d match"),
+        r.expect("Should find a r or l match"),
+        f.expect("Should find a f or b match"),
+    )
 }
 
 impl Cube {
@@ -180,6 +450,45 @@ impl Cube {
                 dl: back_color.clone(),
                 dr: back_color,
             },
+        }
+    }
+
+    fn make_desired_from_dlb(&self) -> DesiredFaces {
+        let l = self.l.db.clone();
+        let d = self.d.bl.clone();
+        let b = self.b.dl.clone();
+
+        let r = l.opposite();
+        let u = d.opposite();
+        let f = b.opposite();
+
+        DesiredFaces { l, d, b, r, u, f }
+    }
+
+    pub fn make_pos_arr_from_dlb(self) -> CubeletArrangement {
+        let des = self.make_desired_from_dlb();
+
+        let Self { u, d, r, l, f, b } = self;
+
+        let dlb = make_pos_from_dlb(&des, d.bl, l.db, b.dl); // better be DLB
+        let drb = make_pos_from_dlb(&des, d.br, r.db, b.dr);
+        let dlf = make_pos_from_dlb(&des, d.fl, l.df, f.dl);
+        let drf = make_pos_from_dlb(&des, d.fr, r.df, f.dr);
+
+        let ulb = make_pos_from_dlb(&des, u.bl, l.ub, b.ul);
+        let urb = make_pos_from_dlb(&des, u.br, r.ub, b.ur);
+        let ulf = make_pos_from_dlb(&des, u.fl, l.uf, f.ul);
+        let urf = make_pos_from_dlb(&des, u.fr, r.uf, f.ur);
+
+        CubeletArrangement {
+            dlb,
+            drb,
+            dlf,
+            drf,
+            ulb,
+            urb,
+            ulf,
+            urf,
         }
     }
 
@@ -515,8 +824,9 @@ impl Cube {
 
 #[cfg(test)]
 mod invariants_tests {
-    use super::*;
     use std::panic;
+
+    use super::*;
 
     fn should_panic<F: FnOnce() -> R + panic::UnwindSafe, R>(f: F) {
         let prev_hook = panic::take_hook();
