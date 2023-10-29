@@ -4,7 +4,7 @@ use std::time::Instant;
 use crate::cube::{Cube, Facelet};
 use crate::full_solve::{optimal_solve, HeuristicType};
 use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
-use crate::scramble::scrambled_cube;
+use crate::scramble::{scramble_ofl, full_scramble, scramble_cfl};
 
 mod cube;
 mod full_solve;
@@ -108,7 +108,7 @@ fn main() -> Result<(), i32> {
     let args: Vec<String> = env::args().skip(1).collect();
 
     if args.len() == 0 {
-        let scramble = scrambled_cube();
+        let scramble = scramble_cfl();
         println!("I made a scramble!");
 
         let start = Instant::now();

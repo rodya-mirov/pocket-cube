@@ -1,18 +1,18 @@
-// A list, in no particular order, of all cubies
+// A list of all cubies, white first, then yellow (don't change the order please)
 // Each cubie is in "order" clockwise, but without a set start cubie; that is, YBO is BOY is OYB,
 // but OBY is not equivalent and is not a cubie because that color combination does not occur on
 // the pocket cube in that order.
 pub const ALL_CUBIES: [[Facelet; 3]; 8] = [
-    // Anything with yellow ...
-    [Facelet::Yellow, Facelet::Orange, Facelet::Green],
-    [Facelet::Yellow, Facelet::Green, Facelet::Red],
-    [Facelet::Yellow, Facelet::Red, Facelet::Blue],
-    [Facelet::Yellow, Facelet::Blue, Facelet::Orange],
     // Anything with white ...
     [Facelet::White, Facelet::Blue, Facelet::Red],
     [Facelet::White, Facelet::Red, Facelet::Green],
     [Facelet::White, Facelet::Green, Facelet::Orange],
     [Facelet::White, Facelet::Orange, Facelet::Blue],
+    // Anything with yellow ...
+    [Facelet::Yellow, Facelet::Orange, Facelet::Green],
+    [Facelet::Yellow, Facelet::Green, Facelet::Red],
+    [Facelet::Yellow, Facelet::Red, Facelet::Blue],
+    [Facelet::Yellow, Facelet::Blue, Facelet::Orange],
 ];
 
 // Note this is NOT Copy, not because it can't be (it definitely can), but because this makes the borrow

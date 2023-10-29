@@ -4,7 +4,82 @@ use rand::Rng;
 
 use crate::cube::{Cube, Facelet, ALL_CUBIES};
 
-pub fn scrambled_cube() -> Cube {
+pub fn scramble_ofl() -> Cube {
+    let mut my_cube = Cube::make_solved(Facelet::Green, Facelet::Yellow);
+
+    let mut all_cubies: Vec<[Facelet; 3]> = ALL_CUBIES.into_iter().collect();
+
+    let mut rng = rand::thread_rng();
+
+    // take random white cubelets to put into the cube
+    put_cubie(&mut my_cube, 0, all_cubies.remove(rng.gen_range(0..4)), 0);
+    put_cubie(&mut my_cube, 1, all_cubies.remove(rng.gen_range(0..3)), 0);
+    put_cubie(&mut my_cube, 2, all_cubies.remove(rng.gen_range(0..2)), 0);
+    put_cubie(&mut my_cube, 3, all_cubies.remove(rng.gen_range(0..1)), 0);
+
+    // then do the yellow cubies at the end
+    for i in 4..7 {
+        let ind = rng.gen_range(0..all_cubies.len());
+        let cubie = all_cubies.remove(ind);
+
+        let rotation = rng.gen_range(0..3);
+
+        put_cubie(&mut my_cube, i, cubie, rotation);
+    }
+
+    let cubie = all_cubies.remove(0);
+
+    assert!(all_cubies.is_empty());
+
+    for rotation in 0..3 {
+        put_cubie(&mut my_cube, 7, cubie.clone(), rotation);
+
+        if my_cube.clone().make_orr_arr_from_dlb().is_solvable() {
+            return my_cube;
+        }
+    }
+
+    unreachable!("Really should have found a valid orientation for that last cube")
+}
+
+pub fn scramble_cfl() -> Cube {
+    let mut my_cube = Cube::make_solved(Facelet::Green, Facelet::Yellow);
+
+    let mut all_cubies: Vec<[Facelet; 3]> = ALL_CUBIES.into_iter().collect();
+
+    let mut rng = rand::thread_rng();
+
+    // take random white cubelets to put into the cube
+    put_cubie(&mut my_cube, 0, all_cubies.remove(0), 0);
+    put_cubie(&mut my_cube, 1, all_cubies.remove(0), 0);
+    put_cubie(&mut my_cube, 2, all_cubies.remove(0), 0);
+    put_cubie(&mut my_cube, 3, all_cubies.remove(0), 0);
+
+    // then do the yellow cubies at the end
+    for i in 4..7 {
+        let cubie = all_cubies.remove(rng.gen_range(0..all_cubies.len()));
+
+        let rotation = rng.gen_range(0..3);
+
+        put_cubie(&mut my_cube, i, cubie, rotation);
+    }
+
+    let cubie = all_cubies.remove(0);
+
+    assert!(all_cubies.is_empty());
+
+    for rotation in 0..3 {
+        put_cubie(&mut my_cube, 7, cubie.clone(), rotation);
+
+        if my_cube.clone().make_orr_arr_from_dlb().is_solvable() {
+            return my_cube;
+        }
+    }
+
+    unreachable!("Really should have found a valid orientation for that last cube")
+}
+
+pub fn full_scramble() -> Cube {
     let mut my_cube = Cube::make_solved(Facelet::Green, Facelet::White);
 
     let mut all_cubies: Vec<[Facelet; 3]> = ALL_CUBIES.into_iter().collect();
@@ -43,8 +118,8 @@ fn put_cubie(cube: &mut Cube, pos_index: i32, mut cubie: [Facelet; 3], orientati
     match pos_index {
         0 => put_dlb(cube, cubie),
         1 => put_dlf(cube, cubie),
-        2 => put_drb(cube, cubie),
-        3 => put_drf(cube, cubie),
+        2 => put_drf(cube, cubie),
+        3 => put_drb(cube, cubie),
         4 => put_ulb(cube, cubie),
         5 => put_ulf(cube, cubie),
         6 => put_urb(cube, cubie),
