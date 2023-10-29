@@ -1,0 +1,35 @@
+Some nice scrambles that have guaranteed "high" length:
+
+All times in ms, with three sigfigs
+
+10 moves, "cube in cube"
+    R U2 R' F2 R U' R2 U F2 U'
+
+    Benches:
+        IDA* with no heuristic (0):
+          213, 214, 214, 213, 212 (ms)
+        IDA* with position cache for heuristic:
+          156, 152, 153, 149, 149 (ms)
+        IDA* with orientation cache for heuristic:
+           39,  47,  44,  43,  43 (ms)
+        IDA* with pos + orr cache for heuristic:
+          158, 161, 161, 161, 160 (ms)
+
+
+11 moves, "double corner swap"
+    F2 U R' F R U2 F' U R U2 R'
+
+    Benches:
+        IDA* with no heuristic (0):
+          3130, 3130, 3130, 3130, 3130
+        IDA* with position cache for heuristic:
+           362,  365,  365,  365,  365
+        IDA* with orientation cache for heuristic:
+           126,  129,  127,  127,  128
+        IDA* with pos + orr cache for heuristic:
+           310,  302,  301,  302,  303
+
+Pretty clear winner here -- orientation cache gives huge gains and you basically lose everything
+by also recomputing the position cache
+
+Note I don't know what you get if you precompute the position cache

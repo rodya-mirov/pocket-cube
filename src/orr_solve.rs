@@ -1,11 +1,11 @@
-use crate::cube::CubeletPositionArrangement;
+use crate::cube::CubeletOrientationArrangement;
 use crate::moves::{Amt, CanMove, Dir, Move};
 
 /// This uses iterative-bounded DFS (i.e. the stupidest possible IDA* variant) to find an optimal
-/// solution to positionally solving a pocket cube
-pub fn optimal_solve_position(arr: CubeletPositionArrangement) -> Vec<Move> {
+/// solution to orientationally solving a pocket cube
+pub fn optimal_solve_orientation(arr: CubeletOrientationArrangement) -> Vec<Move> {
     fn find_solution(
-        arr: CubeletPositionArrangement,
+        arr: CubeletOrientationArrangement,
         running: &mut Vec<Move>,
         fuel: usize,
     ) -> bool {
@@ -17,6 +17,7 @@ pub fn optimal_solve_position(arr: CubeletPositionArrangement) -> Vec<Move> {
             return false;
         }
 
+        // note we can skip R moves, since they don't alter orientation
         for dir in [Dir::R, Dir::U, Dir::F] {
             if running.last().map(|r| r.dir) == Some(dir) {
                 continue;
@@ -56,15 +57,15 @@ pub fn optimal_solve_position(arr: CubeletPositionArrangement) -> Vec<Move> {
 }
 
 #[cfg(test)]
-mod pos_solve_tests {
+mod orr_solve_tests {
     use crate::cube::{Cube, Facelet};
 
     use super::*;
 
-    fn do_pos_solve_test(cube: Cube) -> Vec<Move> {
-        let arr = cube.clone().make_pos_arr_from_dlb();
+    fn do_orr_solve_test(cube: Cube) -> Vec<Move> {
+        let arr = cube.clone().make_orr_arr_from_dlb();
 
-        let soln = optimal_solve_position(arr.clone());
+        let soln = optimal_solve_orientation(arr.clone());
 
         assert!(soln.len() < 12);
 
@@ -85,7 +86,7 @@ mod pos_solve_tests {
 
         assert!(running.is_solved());
 
-        assert!(running_cube.make_pos_arr_from_dlb().is_solved());
+        assert!(running_cube.make_orr_arr_from_dlb().is_solved());
 
         return soln;
     }
@@ -94,33 +95,55 @@ mod pos_solve_tests {
     fn noop_solve() {
         let c = Cube::make_solved(Facelet::Green, Facelet::Yellow);
 
-        let soln = do_pos_solve_test(c);
+        let soln = do_orr_solve_test(c);
+
+        assert_eq!(soln, vec![]);
+    }
+
+    #[test]
+    fn trivial_solve() {
+        // note that R2 doesn't change orientation so it starts solved
+        let c = Cube::make_solved(Facelet::Green, Facelet::Yellow).right_two();
+
+        let soln = do_orr_solve_test(c);
 
         assert_eq!(soln, vec![]);
     }
 
     #[test]
     fn simple_solve() {
-        let c = Cube::make_solved(Facelet::Green, Facelet::Yellow).right_two();
+        let c = Cube::make_solved(Facelet::Green, Facelet::Yellow).up();
 
-        let soln = do_pos_solve_test(c);
+        let soln = do_orr_solve_test(c);
 
         assert_eq!(
             soln,
             vec![Move {
-                dir: Dir::R,
-                amt: Amt::Two
+                dir: Dir::U,
+                amt: Amt::One
             }]
         );
     }
 
     #[test]
-    fn two_move() {
+    fn one_nontrivial_move() {
         let c = Cube::make_solved(Facelet::Green, Facelet::Yellow)
             .right_two()
             .front_rev();
 
-        let soln = do_pos_solve_test(c);
+        let soln = do_orr_solve_test(c);
+
+        // actually more than one optimal solution here, not gonna assert on the exact match
+        assert_eq!(soln.len(), 1);
+    }
+
+    #[test]
+    fn two_move() {
+        let c = Cube::make_solved(Facelet::Green, Facelet::Yellow)
+            .up()
+            .front_rev();
+
+        let soln = do_orr_solve_test(c);
 
         // actually more than one optimal solution here, not gonna assert on the exact match
         assert_eq!(soln.len(), 2);
@@ -143,6 +166,6 @@ mod pos_solve_tests {
             .front()
             .up();
 
-        do_pos_solve_test(c);
+        do_orr_solve_test(c);
     }
 }

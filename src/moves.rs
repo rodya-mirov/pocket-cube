@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::cube::{Cube, CubeletArrangement};
+use crate::cube::{Cube, CubeletOrientationArrangement, CubeletPositionArrangement};
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum Dir {
@@ -70,9 +70,32 @@ pub trait CanMove: Sized {
     }
 }
 
-impl CanMove for CubeletArrangement {
+impl CanMove for CubeletOrientationArrangement {
     #[inline(always)]
-    fn apply(self, m: Move) -> CubeletArrangement {
+    fn apply(self, m: Move) -> CubeletOrientationArrangement {
+        match m.dir {
+            Dir::R => match m.amt {
+                Amt::One => self.r(),
+                Amt::Two => self.r_two(),
+                Amt::Rev => self.r_rev(),
+            },
+            Dir::U => match m.amt {
+                Amt::One => self.u(),
+                Amt::Two => self.u_two(),
+                Amt::Rev => self.u_rev(),
+            },
+            Dir::F => match m.amt {
+                Amt::One => self.f(),
+                Amt::Two => self.f_two(),
+                Amt::Rev => self.f_rev(),
+            },
+        }
+    }
+}
+
+impl CanMove for CubeletPositionArrangement {
+    #[inline(always)]
+    fn apply(self, m: Move) -> CubeletPositionArrangement {
         match m.dir {
             Dir::R => match m.amt {
                 Amt::One => self.r(),
@@ -176,4 +199,26 @@ impl CanFullMove for Cube {
             },
         }
     }
+}
+
+pub fn flip_move(m: Move) -> Move {
+    let amt = match m.amt {
+        Amt::One => Amt::Rev,
+        Amt::Two => Amt::Two,
+        Amt::Rev => Amt::One,
+    };
+
+    Move { amt, dir: m.dir }
+}
+
+pub fn flipped(moves: &[Move]) -> Vec<Move> {
+    let mut out = Vec::with_capacity(moves.len());
+
+    for i in (0..moves.len()).rev() {
+        let m = moves[i];
+
+        out.push(flip_move(m));
+    }
+
+    out
 }

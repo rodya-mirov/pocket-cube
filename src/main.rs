@@ -2,13 +2,16 @@ use std::env;
 use std::time::Instant;
 
 use crate::cube::{Cube, Facelet};
-use crate::full_solve::optimal_solve;
-use crate::moves::{CanFullMove, nice_write};
+use crate::full_solve::{optimal_solve, HeuristicType};
+use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
+use crate::scramble::scrambled_cube;
 
 mod cube;
 mod full_solve;
 mod moves;
+mod orr_solve;
 mod pos_solve;
+mod scramble;
 mod setup;
 
 /*
@@ -86,22 +89,46 @@ to know if a _cubelet_ has the correct position or orientation, we'll do it assu
 (lower-left-back) cubie is fixed. Then there is a canonical answer.
 */
 
-fn main() -> Result<(), i32> {
-    let args: Vec<String> = env::args().skip(1).collect();
-    let input_line: String = args.join(" ");
-    let parsed = setup::parse_line(&input_line).map_err(|e| {
-        println!("Could not parse token {:?}", e);
-        1
-    })?;
-
-    let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(&parsed);
+fn solve_input(input: &[FullMove]) {
+    let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(input);
 
     let start = Instant::now();
-    let solution = optimal_solve(cube);
+    let solution = optimal_solve(cube, HeuristicType::Orr);
     let elapsed = start.elapsed();
 
-    println!("Full solution to input in {} moves:\n{}", solution.len(), nice_write(&solution));
+    println!(
+        "Full solution to input in {} moves:\n{}",
+        solution.len(),
+        nice_write(&solution)
+    );
     println!("Search took {:?}", elapsed);
+}
+
+fn main() -> Result<(), i32> {
+    let args: Vec<String> = env::args().skip(1).collect();
+
+    if args.len() == 0 {
+        let scramble = scrambled_cube();
+        println!("I made a scramble!");
+
+        let start = Instant::now();
+        let solution = optimal_solve(scramble, HeuristicType::Orr);
+        let elapsed = start.elapsed();
+
+        println!("Full solution to scramble in {} moves", solution.len());
+        println!("Search took {:?}", elapsed);
+
+        let steps = flipped(&solution);
+        println!("Scramble given by: {}", nice_write(&steps));
+    } else {
+        let input_line: String = args.join(" ");
+        let parsed = setup::parse_line(&input_line).map_err(|e| {
+            println!("Could not parse token {:?}", e);
+            1
+        })?;
+
+        solve_input(&parsed);
+    }
 
     Ok(())
 }
