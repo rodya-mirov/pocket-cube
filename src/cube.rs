@@ -9,9 +9,9 @@ pub const ALL_CUBIES: [[Facelet; 3]; 8] = [
     [Facelet::White, Facelet::Green, Facelet::Orange],
     [Facelet::White, Facelet::Orange, Facelet::Blue],
     // Anything with yellow ...
-    [Facelet::Yellow, Facelet::Orange, Facelet::Green],
-    [Facelet::Yellow, Facelet::Green, Facelet::Red],
     [Facelet::Yellow, Facelet::Red, Facelet::Blue],
+    [Facelet::Yellow, Facelet::Green, Facelet::Red],
+    [Facelet::Yellow, Facelet::Orange, Facelet::Green],
     [Facelet::Yellow, Facelet::Blue, Facelet::Orange],
 ];
 

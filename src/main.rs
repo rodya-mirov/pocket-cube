@@ -5,7 +5,7 @@ use clap::{Parser, Subcommand};
 use crate::cube::{Cube, Facelet};
 use crate::full_solve::{optimal_solve, HeuristicType};
 use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
-use crate::scramble::{full_scramble, scramble_cfl, scramble_ofl};
+use crate::scramble::{full_scramble, scramble_cfl, scramble_cfl_oll, scramble_cll, scramble_ofl, scramble_oll};
 
 mod cube;
 mod full_solve;
@@ -40,6 +40,12 @@ enum ScrambleKind {
     CFL,
     /// Performs an OLL scramble. The bottom and top layer will be correctly oriented.
     OLL,
+    /// Perfectly scrambles a solved cube into a solved state.
+    CLL,
+    /// Leave the bottom layer completely solved, and the top layer oriented correctly
+    // funny naming but it makes clap happy which is all i wanted really
+    #[allow(non_camel_case_types)]
+    CFL_OFL,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -73,24 +79,12 @@ fn main() -> Result<(), i32> {
         }
         CubeCommand::Scramble { kind } => {
             let scramble = match kind {
-                ScrambleKind::Full => {
-                    println!("Doing a full scramble ...");
-                    full_scramble()
-                }
-                ScrambleKind::OFL => {
-                    println!("Doing an OFL scramble; first layer should be oriented ...");
-                    scramble_ofl()
-                }
-                ScrambleKind::CFL => {
-                    println!("Doing a CFL scramble; first layer should be completely solved ...");
-                    scramble_cfl()
-                }
-                ScrambleKind::OLL => {
-                    println!(
-                        "Doing an OLL scramble; first and second layer should be oriented ..."
-                    );
-                    unimplemented!()
-                }
+                ScrambleKind::Full => full_scramble(),
+                ScrambleKind::OFL => scramble_ofl(),
+                ScrambleKind::CFL => scramble_cfl(),
+                ScrambleKind::OLL => scramble_oll(),
+                ScrambleKind::CLL => scramble_cll(),
+                ScrambleKind::CFL_OFL => scramble_cfl_oll(),
             };
 
             let start = Instant::now();
