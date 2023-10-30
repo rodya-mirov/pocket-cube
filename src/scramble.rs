@@ -96,8 +96,8 @@ pub fn scramble_oll() -> Cube {
     // then do the yellow cubies at the end; we'll scramble the order but leave the orientations
     // fixed. Which is a bit iffy ... ??
     let mut scrambled_cubies = Vec::with_capacity(4);
-    for _ in 0 .. 4 {
-        scrambled_cubies.push(all_cubies.remove(rng.gen_range(0 .. all_cubies.len())));
+    for _ in 0..4 {
+        scrambled_cubies.push(all_cubies.remove(rng.gen_range(0..all_cubies.len())));
     }
 
     drop(all_cubies);
@@ -137,8 +137,8 @@ pub fn scramble_cfl_oll() -> Cube {
     // then do the yellow cubies at the end; we'll scramble the order but leave the orientations
     // fixed. Which is a bit iffy ... ??
     let mut scrambled_cubies = Vec::with_capacity(4);
-    for _ in 0 .. 4 {
-        scrambled_cubies.push(all_cubies.remove(rng.gen_range(0 .. all_cubies.len())));
+    for _ in 0..4 {
+        scrambled_cubies.push(all_cubies.remove(rng.gen_range(0..all_cubies.len())));
     }
 
     drop(all_cubies);
