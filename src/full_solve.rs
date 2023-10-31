@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::cube::{Cube, CubeletOrientationArrangement, CubeletPositionArrangement, Facelet};
-use crate::moves::{Amt, CanMove, Dir, Move};
+use crate::moves::{Amt, CanMove, Dir, Move, reversed};
 use crate::orr_solve::optimal_solve_orientation;
 use crate::pos_solve::optimal_solve_position;
 
@@ -77,7 +77,8 @@ pub trait Heuristic {
 }
 
 pub trait ShortCircuitCache {
-    fn learn_solution(&mut self, cube: Cube, solution: Vec<Move>);
+    fn learn_path(&mut self, cube: Cube, solution: &[Move]);
+
     fn known_solution(&self, cube: &Cube) -> Option<Vec<Move>>;
 
     fn load_with_depth(&mut self, depth: usize, f: Facelet, u: Facelet)
@@ -91,12 +92,12 @@ pub trait ShortCircuitCache {
             max_depth: usize,
         ) {
             match cache.known_solution(&cube) {
-                None => cache.learn_solution(cube.clone(), running.clone()),
+                None => cache.learn_path(cube.clone(), running),
                 Some(existing) => {
                     if running.len() >= existing.len() {
                         return;
                     } else {
-                        cache.learn_solution(cube.clone(), running.clone())
+                        cache.learn_path(cube.clone(), running)
                     }
                 }
             }
@@ -138,7 +139,8 @@ impl SimpleShortCircuitCache {
 }
 
 impl ShortCircuitCache for SimpleShortCircuitCache {
-    fn learn_solution(&mut self, cube: Cube, solution: Vec<Move>) {
+    fn learn_path(&mut self, cube: Cube, solution: &[Move]) {
+        let solution = reversed(solution).collect();
         self.cache.insert(cube, solution);
     }
 
@@ -244,19 +246,12 @@ impl Heuristic for FullHeuristic {
     }
 }
 
+#[derive(Eq, PartialEq, Debug, Hash, Copy, Clone)]
 enum SolveResult {
     // found a solution
     Success,
-    // failed to find a solution; best pruned node available was [val]
-    Failed(usize),
-}
-
-// if running is None, gives next; otherwise gives the min of the two values
-fn safe_min(running: Option<usize>, next: usize) -> usize {
-    match running {
-        None => next,
-        Some(old) => old.min(next),
-    }
+    // failed to find a solution
+    Failed,
 }
 
 pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
@@ -279,6 +274,8 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
     ) -> SolveResult {
         if cube.solved() {
             return SolveResult::Success;
+        } else if running.len() == max_cost {
+            return SolveResult::Failed;
         }
 
         if let Some(known) = short_circuit_cache.known_solution(&cube) {
@@ -288,7 +285,8 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
             return SolveResult::Success;
         }
 
-        let mut best_failure = None;
+        let heuristic_cost_now = heuristic.estimated_remaining_cost(pos_arr.clone(), orr_arr.clone());
+        let est_total_cost_now = running.len() + heuristic_cost_now;
 
         for dir in [Dir::F, Dir::R, Dir::U] {
             if running.last().map(|m| m.dir) == Some(dir) {
@@ -308,9 +306,12 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
                 let next_pos_arr = pos_arr.clone().apply(m);
                 let next_orr_arr = orr_arr.clone().apply(m);
 
-                let est_cost = running.len()
-                    + heuristic
-                        .estimated_remaining_cost(next_pos_arr.clone(), next_orr_arr.clone());
+                let heuristic_cost = heuristic
+                    .estimated_remaining_cost(next_pos_arr.clone(), next_orr_arr.clone());
+
+                let est_cost = running.len() + heuristic_cost;
+
+                assert!(est_cost >= est_total_cost_now, "Heuristic cost must not drop too quickly");
 
                 if est_cost <= max_cost {
                     // if we have enough gas to get to the next node, try it out
@@ -327,23 +328,15 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
                     match iterate_result {
                         // immediately return, so the "running" vec has all the stuff it needs
                         SolveResult::Success => return SolveResult::Success,
-                        SolveResult::Failed(best_pruned) => {
-                            best_failure = Some(safe_min(best_failure, best_pruned));
-                        }
+                        SolveResult::Failed =>{},
                     }
-                } else {
-                    // if we're out of gas, note how much fuel we would have needed to look at
-                    // the next node, and move on
-                    best_failure = Some(safe_min(best_failure, est_cost));
                 }
 
                 running.pop();
             }
         }
 
-        let next_node_cost =
-            best_failure.expect("Should have found a failure, since there was no success");
-        SolveResult::Failed(next_node_cost)
+        SolveResult::Failed
     }
 
     fn solve_with_heuristic<H: Heuristic, S: ShortCircuitCache>(
@@ -355,8 +348,7 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
         let pos_arr = cube.clone().make_pos_arr_from_dlb();
         let orr_arr = cube.clone().make_orr_arr_from_dlb();
 
-        let mut starting_fuel =
-            heuristic.estimated_remaining_cost(pos_arr.clone(), orr_arr.clone());
+        let mut starting_fuel = 0;
 
         while starting_fuel < max_fuel {
             let mut running = Vec::new();
@@ -371,13 +363,11 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
                 short_circuit_cache,
             );
 
-            match sr {
-                SolveResult::Success => return running,
-                SolveResult::Failed(next_fuel) => {
-                    assert!(next_fuel > starting_fuel);
-                    starting_fuel = next_fuel;
-                }
+            if sr == SolveResult::Success {
+                return running;
             }
+
+            starting_fuel += 1;
         }
 
         unreachable!("Should have found a solution!")
@@ -392,7 +382,15 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
     let mut short_circuit_cache = SimpleShortCircuitCache::default();
     let des = cube.clone().make_desired_from_dlb();
 
-    short_circuit_cache.load_with_depth(5, des.f, des.u);
+    // right now, the heuristics and the short-circuit cache interact badly, so we disable
+    // one or the other
+    let short_circuit_depth = match heuristic_type {
+        HeuristicType::None => 5,
+        _ => 0,
+    };
+
+    println!("Precomputing cache of depth {}", short_circuit_depth);
+    short_circuit_cache.load_with_depth(short_circuit_depth, des.f, des.u);
 
     match heuristic_type {
         HeuristicType::None => {
@@ -407,5 +405,61 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
         HeuristicType::PosAndOrr => {
             optimal_solve_heuristic(cube, &mut FullHeuristic::default(), &short_circuit_cache)
         }
+    }
+}
+
+#[cfg(test)]
+mod random_tests {
+    use crate::cube::{Cube, Facelet};
+    use crate::moves::{CanFullMove, nice_write};
+    use crate::setup::parse_line;
+
+    use super::*;
+
+    // Exhibits the problem, though I don't know why. This has a solution of length 9.
+    const PROBLEM_CHILD: &'static str = "F2 R' F' F2 U2 R2 F R U' R U2 R' L";
+
+    fn do_test(input: &str, ht: HeuristicType, exp_length: usize) {
+        let moves = parse_line(input).unwrap();
+        let mut start = Cube::make_solved(Facelet::Green, Facelet::White);
+
+        for m in moves {
+            start = start.apply_full(m);
+        }
+
+        let start = start;
+
+        let solution = optimal_solve(start.clone(), ht);
+
+        println!("Given scramble \"{}\", got solution \"{}\"", input, nice_write(&solution));
+
+        let mut running = start;
+
+        for m in &solution {
+            running = running.apply(*m);
+        }
+
+        assert!(running.solved(), "Solution should result in a solved cube");
+        assert_eq!(solution.len(), exp_length, "Solution should have the right length; expected {} but got {}.", exp_length, solution.len());
+    }
+
+    #[test]
+    fn test_sample_no_heuristic() {
+        do_test(PROBLEM_CHILD, HeuristicType::None, 9);
+    }
+
+    #[test]
+    fn test_sample_orr_heuristic() {
+        do_test(PROBLEM_CHILD, HeuristicType::Orr, 9);
+    }
+
+    #[test]
+    fn test_sample_pos_heuristic() {
+        do_test(PROBLEM_CHILD, HeuristicType::Pos, 9);
+    }
+
+    #[test]
+    fn test_sample_full_heuristic() {
+        do_test(PROBLEM_CHILD, HeuristicType::PosAndOrr, 9);
     }
 }

@@ -5,11 +5,11 @@ use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::cube::{
-    Cube, CubeletOrientation, CubeletOrientationArrangement, CubeletPos,
-    CubeletPositionArrangement, Facelet, ALL_CUBIES,
+    ALL_CUBIES, Cube, CubeletOrientation, CubeletOrientationArrangement,
+    CubeletPos, CubeletPositionArrangement, Facelet,
 };
 use crate::full_solve::{
-    optimal_solve_heuristic, FullHeuristic, Heuristic, ShortCircuitCache, SimpleShortCircuitCache,
+    Heuristic, NoHeuristic, optimal_solve_heuristic, ShortCircuitCache, SimpleShortCircuitCache,
 };
 use crate::scramble::put_cubie;
 
@@ -19,10 +19,12 @@ pub fn compute_len_bound() -> usize {
 
     println!("By symmetry, we can assume the DLB corner is white/blue/red, with white on bottom");
 
-    // You can change this heuristic type if you want; if you cut it down, it will correctly
-    // save (almost all of the) heuristic pre-computation time
-    let mut heuristic = FullHeuristic::default();
+    // Because of the short-circuit cache, we can't really use the heuristics anymore; the algorithm
+    // becomes unsound. For what we're doing (massively building up all solutions) it's better to
+    // have a huge short-circuit cache than to have a useful heuristic, so we'll do that.
+    let mut heuristic = NoHeuristic::default();
 
+    // Leaving this in here in case we switch back ...
     load_orr_heuristic(&mut heuristic);
     load_pos_heuristic(&mut heuristic);
 

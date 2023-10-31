@@ -16,10 +16,30 @@ pub enum Amt {
     Rev,
 }
 
+impl Amt {
+    pub fn reversed(self) -> Self {
+        match self {
+            Amt::Two => Amt::Two,
+            Amt::One => Amt::Rev,
+            Amt::Rev => Amt::One
+        }
+    }
+}
+
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct Move {
     pub dir: Dir,
     pub amt: Amt,
+}
+
+impl Move {
+    pub fn reversed(self) -> Self {
+        Move { dir: self.dir, amt: self.amt.reversed() }
+    }
+}
+
+pub fn reversed<'a>(moves: &'a [Move]) -> impl 'a + Iterator<Item=Move> {
+    moves.iter().rev().map(|m| m.reversed())
 }
 
 impl Display for Move {

@@ -3,9 +3,9 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 
 use crate::cube::{Cube, Facelet};
-use crate::full_solve::{optimal_solve, HeuristicType};
+use crate::full_solve::{HeuristicType, optimal_solve};
 use crate::len_bound::compute_len_bound;
-use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
+use crate::moves::{CanFullMove, flipped, FullMove, nice_write};
 use crate::scramble::{
     full_scramble, scramble_cfl, scramble_cfl_oll, scramble_cll, scramble_ofl, scramble_oll,
 };
@@ -19,11 +19,13 @@ mod pos_solve;
 mod scramble;
 mod setup;
 
-fn solve_input(input: &[FullMove]) {
+const HEURISTIC_TYPE: HeuristicType = HeuristicType::None;
+
+fn solve_input(heuristic_type: HeuristicType, input: &[FullMove]) {
     let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(input);
 
     let start = Instant::now();
-    let solution = optimal_solve(cube, HeuristicType::Orr);
+    let solution = optimal_solve(cube, heuristic_type);
     let elapsed = start.elapsed();
 
     println!(
@@ -80,7 +82,7 @@ fn main() -> Result<(), i32> {
                 1
             })?;
 
-            solve_input(&parsed);
+            solve_input(HEURISTIC_TYPE, &parsed);
         }
         CubeCommand::LengthBound => {
             let start = Instant::now();
