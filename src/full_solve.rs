@@ -79,7 +79,9 @@ pub trait Heuristic {
 pub trait ShortCircuitCache {
     fn learn_path(&mut self, cube: Cube, solution: &[Move]);
 
-    fn known_solution(&self, cube: &Cube) -> Option<Vec<Move>>;
+    fn known_solution(&self, cube: &Cube) -> Option<&Vec<Move>>;
+
+    fn depth(&self) -> usize;
 
     fn load_with_depth(&mut self, depth: usize, f: Facelet, u: Facelet)
     where
@@ -130,6 +132,7 @@ pub trait ShortCircuitCache {
 #[derive(Default)]
 pub struct SimpleShortCircuitCache {
     cache: HashMap<Cube, Vec<Move>>,
+    depth: usize,
 }
 
 impl SimpleShortCircuitCache {
@@ -144,8 +147,12 @@ impl ShortCircuitCache for SimpleShortCircuitCache {
         self.cache.insert(cube, solution);
     }
 
-    fn known_solution(&self, cube: &Cube) -> Option<Vec<Move>> {
-        self.cache.get(&cube).cloned()
+    fn depth(&self) -> usize {
+        self.depth
+    }
+
+    fn known_solution(&self, cube: &Cube) -> Option<&Vec<Move>> {
+        self.cache.get(&cube)
     }
 }
 
@@ -279,10 +286,16 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
         }
 
         if let Some(known) = short_circuit_cache.known_solution(&cube) {
-            for m in known {
-                running.push(m);
+            if known.len() + running.len() <= max_cost {
+                for m in known {
+                    running.push(*m);
+                }
+                return SolveResult::Success;
+            } else {
+                return SolveResult::Failed;
             }
-            return SolveResult::Success;
+        } else if short_circuit_cache.depth() + running.len() >= max_cost {
+            return SolveResult::Failed;
         }
 
         let heuristic_cost_now = heuristic.estimated_remaining_cost(pos_arr.clone(), orr_arr.clone());
@@ -386,7 +399,7 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
     // one or the other
     let short_circuit_depth = match heuristic_type {
         HeuristicType::None => 5,
-        _ => 0,
+        _ => 5,
     };
 
     println!("Precomputing cache of depth {}", short_circuit_depth);

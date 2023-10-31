@@ -70,3 +70,22 @@ As a nice bonus, once a particular cubie has its position and orientation fixed,
 has a canonical correct position and orientation (relative to your fixed cubie). So when we want
 to know if a _cubelet_ has the correct position or orientation, we'll do it assuming the BLD
 (lower-left-back) cubie is fixed. Then there is a canonical answer.
+
+
+
+Some notes about performance;
+
+The simple answer is "we used IDA*" which means we wanted to get some heuristics. The two heuristics implemented are
+the following:
+
+- Distance to being orientationally solved
+- Distance to being positionally solved
+
+(and of course you can take the max of those two). This works well; in particular the sweet spot seems to be to use
+orientational but not positional heuristic, since the latter doesn't add enough and is too expensive to calculate.
+
+However, to compute the LUB of path lengths (so-called "God's Number" which I dislike as a term) I also implemented
+a short-circuit evaluation; that is, to precompute every state that's within [x] moves of solved, and when you're
+solving, if you get to one of those, you immediately know the best path from where you are to the end (essentially,
+a bi-directional search). This works _really_ well; you can compute the cache of length 5 in a few milliseconds and
+cut the search depth in half (which, considering exponential growth, is amazing).

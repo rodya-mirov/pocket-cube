@@ -19,7 +19,7 @@ mod pos_solve;
 mod scramble;
 mod setup;
 
-const HEURISTIC_TYPE: HeuristicType = HeuristicType::None;
+const HEURISTIC_TYPE: HeuristicType = HeuristicType::Orr;
 
 fn solve_input(heuristic_type: HeuristicType, input: &[FullMove]) {
     let cube = Cube::make_solved(Facelet::Green, Facelet::White).apply_many_full(input);
