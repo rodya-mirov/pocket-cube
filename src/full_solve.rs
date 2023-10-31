@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::cube::{Cube, CubeletOrientationArrangement, CubeletPositionArrangement};
+use crate::cube::{Cube, CubeletOrientationArrangement, CubeletPositionArrangement, Facelet};
 use crate::moves::{Amt, CanMove, Dir, Move};
 use crate::orr_solve::optimal_solve_orientation;
 use crate::pos_solve::optimal_solve_position;
@@ -15,6 +15,17 @@ pub enum HeuristicType {
     Pos,
     Orr,
     PosAndOrr,
+}
+
+fn cache_helper_or_die<Arrangement: CanMove + Clone + std::hash::Hash + Eq + PartialEq>(
+    cache: &HashMap<Arrangement, usize>,
+    arr: Arrangement,
+) -> usize {
+    if let Some(dist) = cache.get(&arr) {
+        return *dist;
+    }
+
+    panic!("Cannot fetch the needed arrangement, because there is no cached value for it")
 }
 
 fn cache_helper<
@@ -51,16 +62,93 @@ fn cache_helper<
     full_length
 }
 
-trait Heuristic {
+pub trait Heuristic {
     fn estimated_remaining_cost(
         &mut self,
         pos: CubeletPositionArrangement,
         orr: CubeletOrientationArrangement,
     ) -> usize;
+
+    fn estimate_or_die(
+        &self,
+        pos: CubeletPositionArrangement,
+        orr: CubeletOrientationArrangement,
+    ) -> usize;
+}
+
+pub trait ShortCircuitCache {
+    fn learn_solution(&mut self, cube: Cube, solution: Vec<Move>);
+    fn known_solution(&self, cube: &Cube) -> Option<Vec<Move>>;
+
+    fn load_with_depth(&mut self, depth: usize, f: Facelet, u: Facelet)
+    where
+        Self: Sized,
+    {
+        fn walk<S: ShortCircuitCache>(
+            cube: Cube,
+            cache: &mut S,
+            running: &mut Vec<Move>,
+            max_depth: usize,
+        ) {
+            match cache.known_solution(&cube) {
+                None => cache.learn_solution(cube.clone(), running.clone()),
+                Some(existing) => {
+                    if running.len() >= existing.len() {
+                        return;
+                    } else {
+                        cache.learn_solution(cube.clone(), running.clone())
+                    }
+                }
+            }
+
+            if running.len() >= max_depth {
+                return;
+            }
+
+            for dir in [Dir::R, Dir::F, Dir::U] {
+                if running.last().map(|m| m.dir) == Some(dir) {
+                    continue;
+                }
+
+                for amt in [Amt::One, Amt::Two, Amt::Rev] {
+                    let m = Move { dir, amt };
+                    let next_cube = cube.clone().apply(m);
+                    running.push(m);
+                    walk(next_cube, cache, running, max_depth);
+                    running.pop();
+                }
+            }
+        }
+
+        let cube = Cube::make_solved(f.clone(), u.clone());
+
+        walk(cube.clone(), self, &mut Vec::with_capacity(depth), depth);
+    }
 }
 
 #[derive(Default)]
-struct NoHeuristic;
+pub struct SimpleShortCircuitCache {
+    cache: HashMap<Cube, Vec<Move>>,
+}
+
+impl SimpleShortCircuitCache {
+    pub fn cache_size(&self) -> usize {
+        self.cache.len()
+    }
+}
+
+impl ShortCircuitCache for SimpleShortCircuitCache {
+    fn learn_solution(&mut self, cube: Cube, solution: Vec<Move>) {
+        self.cache.insert(cube, solution);
+    }
+
+    fn known_solution(&self, cube: &Cube) -> Option<Vec<Move>> {
+        self.cache.get(&cube).cloned()
+    }
+}
+
+#[derive(Default)]
+pub struct NoHeuristic;
 
 impl Heuristic for NoHeuristic {
     fn estimated_remaining_cost(
@@ -70,10 +158,18 @@ impl Heuristic for NoHeuristic {
     ) -> usize {
         0
     }
+
+    fn estimate_or_die(
+        &self,
+        _pos: CubeletPositionArrangement,
+        _orr: CubeletOrientationArrangement,
+    ) -> usize {
+        0
+    }
 }
 
 #[derive(Default)]
-struct PosHeuristic {
+pub struct PosHeuristic {
     pos_dist_cache: HashMap<CubeletPositionArrangement, usize>,
 }
 
@@ -85,10 +181,18 @@ impl Heuristic for PosHeuristic {
     ) -> usize {
         cache_helper(&mut self.pos_dist_cache, pos, optimal_solve_position)
     }
+
+    fn estimate_or_die(
+        &self,
+        pos: CubeletPositionArrangement,
+        _orr: CubeletOrientationArrangement,
+    ) -> usize {
+        cache_helper_or_die(&self.pos_dist_cache, pos)
+    }
 }
 
 #[derive(Default)]
-struct OrrHeuristic {
+pub struct OrrHeuristic {
     orr_dist_cache: HashMap<CubeletOrientationArrangement, usize>,
 }
 
@@ -100,10 +204,18 @@ impl Heuristic for OrrHeuristic {
     ) -> usize {
         cache_helper(&mut self.orr_dist_cache, orr, optimal_solve_orientation)
     }
+
+    fn estimate_or_die(
+        &self,
+        _pos: CubeletPositionArrangement,
+        orr: CubeletOrientationArrangement,
+    ) -> usize {
+        cache_helper_or_die(&self.orr_dist_cache, orr)
+    }
 }
 
 #[derive(Default)]
-struct FullHeuristic {
+pub struct FullHeuristic {
     pos_dist_cache: HashMap<CubeletPositionArrangement, usize>,
     orr_dist_cache: HashMap<CubeletOrientationArrangement, usize>,
 }
@@ -116,6 +228,17 @@ impl Heuristic for FullHeuristic {
     ) -> usize {
         let a = cache_helper(&mut self.orr_dist_cache, orr, optimal_solve_orientation);
         let b = cache_helper(&mut self.pos_dist_cache, pos, optimal_solve_position);
+
+        a.max(b)
+    }
+
+    fn estimate_or_die(
+        &self,
+        pos: CubeletPositionArrangement,
+        orr: CubeletOrientationArrangement,
+    ) -> usize {
+        let a = cache_helper_or_die(&self.orr_dist_cache, orr);
+        let b = cache_helper_or_die(&self.pos_dist_cache, pos);
 
         a.max(b)
     }
@@ -136,20 +259,32 @@ fn safe_min(running: Option<usize>, next: usize) -> usize {
     }
 }
 
-pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
+pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
+    cube: Cube,
+    heuristic: &mut H,
+    short_circuit_cache: &S,
+) -> Vec<Move> {
     if cube.solved() {
         return vec![];
     }
 
-    fn solve<H: Heuristic>(
+    fn solve<H: Heuristic, S: ShortCircuitCache>(
         cube: Cube,
         pos_arr: CubeletPositionArrangement,
         orr_arr: CubeletOrientationArrangement,
         heuristic: &mut H,
         running: &mut Vec<Move>,
         max_cost: usize,
+        short_circuit_cache: &S,
     ) -> SolveResult {
         if cube.solved() {
+            return SolveResult::Success;
+        }
+
+        if let Some(known) = short_circuit_cache.known_solution(&cube) {
+            for m in known {
+                running.push(m);
+            }
             return SolveResult::Success;
         }
 
@@ -186,6 +321,7 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
                         heuristic,
                         running,
                         max_cost,
+                        short_circuit_cache,
                     );
 
                     match iterate_result {
@@ -210,10 +346,11 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
         SolveResult::Failed(next_node_cost)
     }
 
-    fn solve_with_heuristic<H: Heuristic>(
+    fn solve_with_heuristic<H: Heuristic, S: ShortCircuitCache>(
         cube: Cube,
         heuristic: &mut H,
         max_fuel: usize,
+        short_circuit_cache: &S,
     ) -> Vec<Move> {
         let pos_arr = cube.clone().make_pos_arr_from_dlb();
         let orr_arr = cube.clone().make_orr_arr_from_dlb();
@@ -231,6 +368,7 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
                 heuristic,
                 &mut running,
                 starting_fuel,
+                short_circuit_cache,
             );
 
             match sr {
@@ -247,12 +385,27 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
 
     const MAX_FUEL: usize = 13;
 
+    solve_with_heuristic(cube, heuristic, MAX_FUEL, short_circuit_cache)
+}
+
+pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
+    let mut short_circuit_cache = SimpleShortCircuitCache::default();
+    let des = cube.clone().make_desired_from_dlb();
+
+    short_circuit_cache.load_with_depth(5, des.f, des.u);
+
     match heuristic_type {
-        HeuristicType::None => solve_with_heuristic(cube, &mut NoHeuristic::default(), MAX_FUEL),
-        HeuristicType::Pos => solve_with_heuristic(cube, &mut PosHeuristic::default(), MAX_FUEL),
-        HeuristicType::Orr => solve_with_heuristic(cube, &mut OrrHeuristic::default(), MAX_FUEL),
+        HeuristicType::None => {
+            optimal_solve_heuristic(cube, &mut NoHeuristic::default(), &short_circuit_cache)
+        }
+        HeuristicType::Pos => {
+            optimal_solve_heuristic(cube, &mut PosHeuristic::default(), &short_circuit_cache)
+        }
+        HeuristicType::Orr => {
+            optimal_solve_heuristic(cube, &mut OrrHeuristic::default(), &short_circuit_cache)
+        }
         HeuristicType::PosAndOrr => {
-            solve_with_heuristic(cube, &mut FullHeuristic::default(), MAX_FUEL)
+            optimal_solve_heuristic(cube, &mut FullHeuristic::default(), &short_circuit_cache)
         }
     }
 }

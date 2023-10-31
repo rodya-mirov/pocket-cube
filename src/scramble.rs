@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use rand::Rng;
 
-use crate::cube::{ALL_CUBIES, Cube, Facelet};
+use crate::cube::{Cube, Facelet, ALL_CUBIES};
 
 pub fn scramble_ofl() -> Cube {
     let mut my_cube = Cube::make_solved(Facelet::Green, Facelet::Yellow);
@@ -213,7 +213,7 @@ pub fn full_scramble() -> Cube {
     unreachable!("Really should have found a valid orientation for that last cube")
 }
 
-fn put_cubie(cube: &mut Cube, pos_index: i32, mut cubie: [Facelet; 3], orientation: i32) {
+pub fn put_cubie(cube: &mut Cube, pos_index: i32, mut cubie: [Facelet; 3], orientation: i32) {
     for _ in 0..orientation {
         cubie.rotate_left(1);
     }

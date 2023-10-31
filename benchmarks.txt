@@ -14,6 +14,8 @@ All times in ms, with three sigfigs
            39,  47,  44,  43,  43 (ms)
         IDA* with pos + orr cache for heuristic:
           158, 161, 161, 161, 160 (ms)
+        IDA* with orr cache and short-circuit depth 5:
+          9, 9, 9, 7, 8
 
 
 11 moves, "double corner swap"
@@ -28,6 +30,10 @@ All times in ms, with three sigfigs
            126,  129,  127,  127,  128
         IDA* with pos + orr cache for heuristic:
            310,  302,  301,  302,  303
+        IDA* with orr cache and short-circuit depth 5:
+           13, 15, 14, 12, 13
+
+       (note: this is with a broad-based cache and paying for it; if you zero in you can improve)
 
 Pretty clear winner here -- orientation cache gives huge gains and you basically lose everything
 by also recomputing the position cache

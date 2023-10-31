@@ -17,7 +17,7 @@ pub const ALL_CUBIES: [[Facelet; 3]; 8] = [
 
 // Note this is NOT Copy, not because it can't be (it definitely can), but because this makes the borrow
 // checker ensure we are actually permuting when we're supposed to be permuting
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub enum Facelet {
     Yellow,
     Red,
@@ -28,7 +28,7 @@ pub enum Facelet {
 }
 
 impl Facelet {
-    fn opposite(&self) -> Self {
+    pub fn opposite(&self) -> Self {
         match self {
             Facelet::Yellow => Facelet::White,
             Facelet::White => Facelet::Yellow,
@@ -56,7 +56,7 @@ impl TryFrom<char> for Facelet {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct UDFace {
     pub bl: Facelet,
     pub br: Facelet,
@@ -70,7 +70,7 @@ impl UDFace {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct FBFace {
     pub ul: Facelet,
     pub ur: Facelet,
@@ -84,7 +84,7 @@ impl FBFace {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct LRFace {
     pub ub: Facelet,
     pub uf: Facelet,
@@ -98,7 +98,7 @@ impl LRFace {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash)]
 pub struct Cube {
     pub u: UDFace,
     pub d: UDFace,
@@ -277,7 +277,7 @@ pub struct CubeletPositionArrangement {
 
 impl CubeletPositionArrangement {
     #[inline(always)]
-    fn make_solved() -> Self {
+    pub fn make_solved() -> Self {
         use CubeletPos::*;
 
         CubeletPositionArrangement {
@@ -413,12 +413,12 @@ impl CubeletPositionArrangement {
 
 #[derive(Clone, Eq, PartialEq, Debug)]
 pub struct DesiredFaces {
-    u: Facelet,
-    d: Facelet,
-    r: Facelet,
-    l: Facelet,
-    f: Facelet,
-    b: Facelet,
+    pub u: Facelet,
+    pub d: Facelet,
+    pub r: Facelet,
+    pub l: Facelet,
+    pub f: Facelet,
+    pub b: Facelet,
 }
 
 impl DesiredFaces {
@@ -483,51 +483,6 @@ impl CubeletPos {
             (false, true, false) => DRB,
             (false, false, true) => DLF,
             (false, false, false) => DLB,
-        }
-    }
-
-    // TODO: remove this? not sure it's needed
-    #[allow(unused)]
-    fn u(&self) -> bool {
-        match self {
-            CubeletPos::ULF => true,
-            CubeletPos::ULB => true,
-            CubeletPos::URF => true,
-            CubeletPos::URB => true,
-            CubeletPos::DLF => false,
-            CubeletPos::DLB => false,
-            CubeletPos::DRF => false,
-            CubeletPos::DRB => false,
-        }
-    }
-
-    // TODO: remove this? not sure it's needed
-    #[allow(unused)]
-    fn r(&self) -> bool {
-        match self {
-            CubeletPos::ULF => false,
-            CubeletPos::ULB => false,
-            CubeletPos::URF => true,
-            CubeletPos::URB => true,
-            CubeletPos::DLF => false,
-            CubeletPos::DLB => false,
-            CubeletPos::DRF => true,
-            CubeletPos::DRB => true,
-        }
-    }
-
-    // TODO: remove this? not sure it's needed
-    #[allow(unused)]
-    fn f(&self) -> bool {
-        match self {
-            CubeletPos::ULF => true,
-            CubeletPos::ULB => false,
-            CubeletPos::URF => true,
-            CubeletPos::URB => false,
-            CubeletPos::DLF => true,
-            CubeletPos::DLB => false,
-            CubeletPos::DRF => true,
-            CubeletPos::DRB => false,
         }
     }
 }
@@ -661,7 +616,7 @@ impl Cube {
         }
     }
 
-    fn make_desired_from_dlb(&self) -> DesiredFaces {
+    pub fn make_desired_from_dlb(&self) -> DesiredFaces {
         let l = self.l.db.clone();
         let d = self.d.bl.clone();
         let b = self.b.dl.clone();

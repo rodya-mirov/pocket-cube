@@ -3,14 +3,16 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 
 use crate::cube::{Cube, Facelet};
-use crate::full_solve::{HeuristicType, optimal_solve};
-use crate::moves::{CanFullMove, flipped, FullMove, nice_write};
+use crate::full_solve::{optimal_solve, HeuristicType};
+use crate::len_bound::compute_len_bound;
+use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
 use crate::scramble::{
     full_scramble, scramble_cfl, scramble_cfl_oll, scramble_cll, scramble_ofl, scramble_oll,
 };
 
 mod cube;
 mod full_solve;
+mod len_bound;
 mod moves;
 mod orr_solve;
 mod pos_solve;
@@ -59,6 +61,7 @@ enum CubeCommand {
         #[clap(subcommand)]
         kind: ScrambleKind,
     },
+    LengthBound,
 }
 
 #[derive(Parser, Debug)]
@@ -78,6 +81,16 @@ fn main() -> Result<(), i32> {
             })?;
 
             solve_input(&parsed);
+        }
+        CubeCommand::LengthBound => {
+            let start = Instant::now();
+            let len_bound = compute_len_bound();
+            let elapsed = start.elapsed();
+            println!(
+                "Determined the optimal length bound for the pocket cube to be {}",
+                len_bound
+            );
+            println!("Derivation took {:?}", elapsed);
         }
         CubeCommand::Scramble { kind } => {
             let scramble = match kind {
