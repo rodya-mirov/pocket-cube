@@ -21,7 +21,7 @@ impl Amt {
         match self {
             Amt::Two => Amt::Two,
             Amt::One => Amt::Rev,
-            Amt::Rev => Amt::One
+            Amt::Rev => Amt::One,
         }
     }
 }
@@ -34,11 +34,14 @@ pub struct Move {
 
 impl Move {
     pub fn reversed(self) -> Self {
-        Move { dir: self.dir, amt: self.amt.reversed() }
+        Move {
+            dir: self.dir,
+            amt: self.amt.reversed(),
+        }
     }
 }
 
-pub fn reversed<'a>(moves: &'a [Move]) -> impl 'a + Iterator<Item=Move> {
+pub fn reversed<'a>(moves: &'a [Move]) -> impl 'a + Iterator<Item = Move> {
     moves.iter().rev().map(|m| m.reversed())
 }
 

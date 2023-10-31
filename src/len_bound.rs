@@ -5,11 +5,11 @@ use std::collections::VecDeque;
 use std::time::Instant;
 
 use crate::cube::{
-    ALL_CUBIES, Cube, CubeletOrientation, CubeletOrientationArrangement,
-    CubeletPos, CubeletPositionArrangement, Facelet,
+    Cube, CubeletOrientation, CubeletOrientationArrangement, CubeletPos,
+    CubeletPositionArrangement, Facelet, ALL_CUBIES,
 };
 use crate::full_solve::{
-    Heuristic, NoHeuristic, optimal_solve_heuristic, ShortCircuitCache, SimpleShortCircuitCache,
+    optimal_solve_heuristic, FullHeuristic, Heuristic, ShortCircuitCache, SimpleShortCircuitCache,
 };
 use crate::scramble::put_cubie;
 
@@ -19,10 +19,7 @@ pub fn compute_len_bound() -> usize {
 
     println!("By symmetry, we can assume the DLB corner is white/blue/red, with white on bottom");
 
-    // Because of the short-circuit cache, we can't really use the heuristics anymore; the algorithm
-    // becomes unsound. For what we're doing (massively building up all solutions) it's better to
-    // have a huge short-circuit cache than to have a useful heuristic, so we'll do that.
-    let mut heuristic = NoHeuristic::default();
+    let mut heuristic = FullHeuristic::default();
 
     // Leaving this in here in case we switch back ...
     load_orr_heuristic(&mut heuristic);
@@ -31,14 +28,15 @@ pub fn compute_len_bound() -> usize {
     let mut short_circuit_cache = SimpleShortCircuitCache::default();
 
     // Note: we know the front/top goal facelets because DLB is fixed
-    // Basically this means we'll precompute everything of length up to 9 (which takes about
-    // 80% of the allotted time) ...
+    // Basically this means we'll precompute everything of length up to 10 (which takes about
+    // half of the allotted time) ...
+    const DEPTH_SIZE: usize = 10;
     let cache_start = Instant::now();
-    short_circuit_cache.load_with_depth(9, Facelet::Green, Facelet::Yellow);
+    short_circuit_cache.load_with_depth(DEPTH_SIZE, Facelet::Green, Facelet::Yellow);
 
     println!(
         "Computed relevant solutions up to depth {} in {:?}",
-        9,
+        DEPTH_SIZE,
         cache_start.elapsed()
     );
 
@@ -48,10 +46,10 @@ pub fn compute_len_bound() -> usize {
     );
 
     // ... then IDA* every possible combination, short-circuiting as soon as we hit something
-    // of accessibility 9 or less.
+    // of accessibility 10 or less. Which is almost immediate.
     try_combinations(&mut heuristic, &short_circuit_cache)
 
-    // (experimentally, 9 was the sweet spot between spending your whole time in the cache, and
+    // (experimentally, this was the sweet spot between spending your whole time in the cache, and
     // spending too long per combination)
 }
 

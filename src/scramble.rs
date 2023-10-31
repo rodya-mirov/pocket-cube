@@ -3,7 +3,7 @@
 use itertools::Itertools;
 use rand::Rng;
 
-use crate::cube::{ALL_CUBIES, Cube, Facelet};
+use crate::cube::{Cube, Facelet, ALL_CUBIES};
 
 pub fn scramble_ofl() -> Cube {
     let mut my_cube = Cube::make_solved(Facelet::Green, Facelet::Yellow);

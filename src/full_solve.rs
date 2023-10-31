@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::cube::{Cube, CubeletOrientationArrangement, CubeletPositionArrangement, Facelet};
-use crate::moves::{Amt, CanMove, Dir, Move, reversed};
+use crate::moves::{reversed, Amt, CanMove, Dir, Move};
 use crate::orr_solve::optimal_solve_orientation;
 use crate::pos_solve::optimal_solve_position;
 
@@ -87,6 +87,10 @@ pub trait ShortCircuitCache {
     where
         Self: Sized,
     {
+        // basically a DFS with a cache -- so if you hit the same node twice, and the second time
+        // isn't better than the first time, you can stop walking. This caps out real bad because
+        // you need to fit all the nodes in memory (and, like traverse them), so it works fine
+        // for pocket cube or small depths in 3x3 cube, but won't be able to solve the 3x3 on its own
         fn walk<S: ShortCircuitCache>(
             cube: Cube,
             cache: &mut S,
@@ -298,7 +302,8 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
             return SolveResult::Failed;
         }
 
-        let heuristic_cost_now = heuristic.estimated_remaining_cost(pos_arr.clone(), orr_arr.clone());
+        let heuristic_cost_now =
+            heuristic.estimated_remaining_cost(pos_arr.clone(), orr_arr.clone());
         let est_total_cost_now = running.len() + heuristic_cost_now;
 
         for dir in [Dir::F, Dir::R, Dir::U] {
@@ -319,12 +324,15 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
                 let next_pos_arr = pos_arr.clone().apply(m);
                 let next_orr_arr = orr_arr.clone().apply(m);
 
-                let heuristic_cost = heuristic
-                    .estimated_remaining_cost(next_pos_arr.clone(), next_orr_arr.clone());
+                let heuristic_cost =
+                    heuristic.estimated_remaining_cost(next_pos_arr.clone(), next_orr_arr.clone());
 
                 let est_cost = running.len() + heuristic_cost;
 
-                assert!(est_cost >= est_total_cost_now, "Heuristic cost must not drop too quickly");
+                assert!(
+                    est_cost >= est_total_cost_now,
+                    "Heuristic cost must not drop too quickly"
+                );
 
                 if est_cost <= max_cost {
                     // if we have enough gas to get to the next node, try it out
@@ -341,7 +349,7 @@ pub fn optimal_solve_heuristic<H: Heuristic, S: ShortCircuitCache>(
                     match iterate_result {
                         // immediately return, so the "running" vec has all the stuff it needs
                         SolveResult::Success => return SolveResult::Success,
-                        SolveResult::Failed =>{},
+                        SolveResult::Failed => {}
                     }
                 }
 
@@ -424,7 +432,7 @@ pub fn optimal_solve(cube: Cube, heuristic_type: HeuristicType) -> Vec<Move> {
 #[cfg(test)]
 mod random_tests {
     use crate::cube::{Cube, Facelet};
-    use crate::moves::{CanFullMove, nice_write};
+    use crate::moves::{nice_write, CanFullMove};
     use crate::setup::parse_line;
 
     use super::*;
@@ -444,7 +452,11 @@ mod random_tests {
 
         let solution = optimal_solve(start.clone(), ht);
 
-        println!("Given scramble \"{}\", got solution \"{}\"", input, nice_write(&solution));
+        println!(
+            "Given scramble \"{}\", got solution \"{}\"",
+            input,
+            nice_write(&solution)
+        );
 
         let mut running = start;
 
@@ -453,7 +465,13 @@ mod random_tests {
         }
 
         assert!(running.solved(), "Solution should result in a solved cube");
-        assert_eq!(solution.len(), exp_length, "Solution should have the right length; expected {} but got {}.", exp_length, solution.len());
+        assert_eq!(
+            solution.len(),
+            exp_length,
+            "Solution should have the right length; expected {} but got {}.",
+            exp_length,
+            solution.len()
+        );
     }
 
     #[test]

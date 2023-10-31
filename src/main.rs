@@ -3,9 +3,9 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 
 use crate::cube::{Cube, Facelet};
-use crate::full_solve::{HeuristicType, optimal_solve};
+use crate::full_solve::{optimal_solve, HeuristicType};
 use crate::len_bound::compute_len_bound;
-use crate::moves::{CanFullMove, flipped, FullMove, nice_write};
+use crate::moves::{flipped, nice_write, CanFullMove, FullMove};
 use crate::scramble::{
     full_scramble, scramble_cfl, scramble_cfl_oll, scramble_cll, scramble_ofl, scramble_oll,
 };
